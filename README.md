@@ -7,11 +7,12 @@ It reads data from a CSV file, sends **one email per run** (with an attached res
 
 ## 🚀 Features
 
-- ✅ Sends **1 email per script run** (ideal for scheduling)
+- ✅ Sends **1 email per script run** (ideal for GitHub Actions or cron scheduling)
 - ✅ Skips rows already marked as `Sent`
 - ✅ Attaches resume PDF automatically
-- ✅ Loads environment variables from `.env` file for security
+- ✅ Reads Gmail credentials securely via **GitHub Secrets**
 - ✅ Gracefully handles malformed CSV rows
+- ✅ Skips top 5 rows if you manually contacted them
 
 ---
 
@@ -20,8 +21,10 @@ It reads data from a CSV file, sends **one email per run** (with an attached res
 ├── send_emails.py # Main Python script
 ├── resume.pdf # Your resume to attach
 ├── hr_contacts.csv # CSV file with HR data
-├── .env # Environment variables (not committed)
-├── .gitignore # Ensures .env and cache aren't pushed
+├── .github/
+│ └── workflows/
+│ └── email_sender.yml # GitHub Actions workflow (auto-scheduler)
+├── .gitignore # Ensures secrets and cache aren't pushed
 └── README.md # This file
 
 ---
@@ -29,48 +32,93 @@ It reads data from a CSV file, sends **one email per run** (with an attached res
 ## 📄 CSV Format
 
 The CSV must have the following columns:
+
 SNo, Name, Email, Title, Company, [Other], Status
 
 
-- `Status` should be blank or "Sent"
-- Script automatically appends `Status` if missing
+
+- `Status` column is used to track who already received emails.
+- Script automatically creates `Status` if not present.
 - Example:
 
-```csv
 SNo,Name,Email,Title,Company,Status
 1,John Doe,john@example.com,HR Head,Acme Corp,
-```
+🔐 Secrets & Environment Setup
+No .env file is needed when using GitHub Actions.
+Instead, go to your GitHub repo:
 
-## 🔐 Environment Variables
-Create a .env file in the project root:
+Settings → Secrets → Actions, and add:
 
-## ⚠️ Use a Gmail App Password (not your Gmail login password).
-Learn more: https://support.google.com/mail/answer/185833
+SENDER_EMAIL → your Gmail (e.g. praharshsai46@gmail.com)
 
-## 💌 Usage
-Run the script using Python:
+APP_PASSWORD → your Gmail App Password (NOT your login password)
+👉 Learn how to get App Password
+
+💌 Manual Usage
+If running locally (optional):
 
 python send_emails.py
 
-## ⏰ Scheduling (Recommended)
-To send 80–100 emails per day, host and schedule using:
+Each run sends only 1 email, marks that row as Sent, and saves the CSV.
 
-GitHub Actions
+⏰ Automated Scheduling (Recommended)
+We recommend GitHub Actions for automation.
 
-Render Cron Jobs
+Sends 1 email every 15 minutes
 
-PythonAnywhere
+Stays well under Gmail’s 100–150/day safe limit
 
-Google Cloud Scheduler
+You can also host using:
 
-We'll send one email per 15 minutes to stay within Gmail's sending limits.
+ PythonAnywhere
 
-## 🔐 Security Tips
-Always use .env and .gitignore to avoid exposing credentials.
+ Google Cloud Scheduler
 
-Keep this repo private unless you're sharing it without real data.
+ Render.com (free tier limited)
 
-## 🙌 Credits
-Created by Praharsh Sai
-Email:
-📫 praharshsai867@gmail.com
+🛠 GitHub Actions Workflow
+GitHub automatically runs your script every 15 minutes via this workflow:
+
+.github/workflows/email_sender.yml
+
+name: Send 1 Email Every 15 Minutes
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send_email:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas
+
+      - name: Run email script
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: |
+          python send_emails.py
+🔐 Security Tips
+Use GitHub Secrets to hide credentials
+
+Never commit .env or credentials
+
+Keep your repo private if it contains real email data
+
+🙌 Credits
+Created by: Praharsh Sai
+📧 Email: praharshsai867@gmail.com
+🔗 LinkedIn:[ M Praharsh Sai]([url](https://www.linkedin.com/in/m-praharsh-sai-77b1ab275/))
