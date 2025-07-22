@@ -1,11 +1,7 @@
 import os
-from dotenv import load_dotenv
 import pandas as pd
 import smtplib
 from email.message import EmailMessage
-
-# Load environment variables from .env file
-load_dotenv()
 
 # ========== CONFIG ==========
 SENDER_EMAIL = os.getenv('SENDER_EMAIL')
@@ -15,19 +11,22 @@ CSV_FILE = 'hr_contacts.csv'
 LINKEDIN_URL = 'https://www.linkedin.com/in/m-praharsh-sai-77b1ab275/'
 # ============================
 
-# Load CSV and handle errors
-try:
-    df = pd.read_csv(CSV_FILE, engine='python', error_bad_lines=False)
-    df.columns = df.columns.str.strip()
+# Safety check for environment variables
+if not SENDER_EMAIL or not APP_PASSWORD:
+    print("[✗] Missing email credentials. Check GitHub environment secrets.")
+    exit()
 
-    # Add missing 'Status' column if not present
+# Load CSV and handle errors gracefully
+try:
+    df = pd.read_csv(CSV_FILE, engine='python', on_bad_lines='skip')
+    df.columns = df.columns.str.strip()
     if 'Status' not in df.columns:
         df['Status'] = ''
 except Exception as e:
     print(f"[✗] Failed to read CSV file: {e}")
     exit()
 
-# Email body generator
+# Generate email body content
 def create_email_body(name, company):
     return f"""Hi {name},
 
@@ -46,7 +45,7 @@ Praharsh Sai
 praharshsai867@gmail.com
 """
 
-# Compose the email
+# Build the email object
 def compose_email(name, email, company):
     msg = EmailMessage()
     msg['Subject'] = f"Interest in Internship/Job Opportunities at {company}"
@@ -58,18 +57,18 @@ def compose_email(name, email, company):
         msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename='Praharsh_Sai_Resume.pdf')
     return msg
 
-# Main function: send 1 email per run
+# Main function to send one email per run
 def main():
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
         smtp.login(SENDER_EMAIL, APP_PASSWORD)
 
         for index, row in df.iterrows():
             if index < 5:
-                continue  # Skip top 5 rows manually done
+                continue  # Skip top 5 (already sent manually)
 
             status = str(row.get('Status', '')).strip().lower()
             if status == 'sent':
-                continue  # Skip already sent
+                continue
 
             name = str(row.get('Name', '')).strip()
             email = str(row.get('Email', '')).strip()
@@ -83,10 +82,10 @@ def main():
                 smtp.send_message(msg)
                 print(f"[✓] Email sent to {name} at {company} ({email})")
 
-                # Mark this row as 'Sent' and save CSV
+                # Update CSV and mark this contact as 'Sent'
                 df.at[index, 'Status'] = 'Sent'
                 df.to_csv(CSV_FILE, index=False)
-                break  # Send only one email per run
+                break  # Only send 1 email per run
             except Exception as e:
                 print(f"[✗] Failed to send email to {email}: {e}")
                 continue
