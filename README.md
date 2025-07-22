@@ -24,7 +24,6 @@ It reads data from a CSV file, sends **one email per run** (with an attached res
 ├── .gitignore # Ensures .env and cache aren't pushed
 └── README.md # This file
 
-
 ---
 
 ## 📄 CSV Format
