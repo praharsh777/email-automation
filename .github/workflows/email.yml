@@ -5,16 +5,20 @@ on:
     - cron: "*/15 * * * *"  # Every 15 minutes (UTC) → ~96 runs/day
   workflow_dispatch:
 
+# Give GITHUB_TOKEN permission to push commits
+permissions:
+  contents: write
+
 jobs:
   send_email:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
+      # 1. Checkout repository with push access
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Needed for pushing changes
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # 2. Set up Python
       - name: Set up Python
@@ -40,5 +44,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add hr_contacts.csv
-          git commit -m "Mark contact as sent [skip ci]" || echo "No changes to commit"
+          git diff --cached --quiet || git commit -m "Mark contact as sent [skip ci]"
           git push
