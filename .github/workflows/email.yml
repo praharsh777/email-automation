@@ -2,12 +2,11 @@ name: Auto Send Email
 
 on:
   schedule:
-    - cron: "*/15 * * * *"  # Every 15 minutes (UTC) → ~96 runs/day
+    - cron: "*/15 * * * *"  # Every 15 minutes (UTC)
   workflow_dispatch:
 
-# Give GITHUB_TOKEN permission to push commits
 permissions:
-  contents: write
+  contents: write  # Allow GITHUB_TOKEN to push commits
 
 jobs:
   send_email:
@@ -39,10 +38,14 @@ jobs:
 
       # 5. Commit & push updated CSV back to repo
       - name: Commit updated CSV
-        if: success()  # Only commit if script ran successfully
+        if: success()
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add hr_contacts.csv
-          git diff --cached --quiet || git commit -m "Mark contact as sent [skip ci]"
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "Mark contact as sent [skip ci]"
+            git push
+          else
+            echo "No changes to commit"
+          fi
