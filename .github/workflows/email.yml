@@ -2,7 +2,7 @@ name: Auto Send Email
 
 on:
   schedule:
-    - cron: "*/15 * * * *"  # Every 15 minutes (UTC)
+    - cron: "*/15 * * * *"  # Every 15 minutes (UTC) → ~96 runs/day
   workflow_dispatch:
 
 jobs:
@@ -10,19 +10,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # Needed for pushing changes
 
+      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
+      # 3. Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # 4. Run your email script
       - name: Run the script
         env:
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: python send_emails.py
+
+      # 5. Commit & push updated CSV back to repo
+      - name: Commit updated CSV
+        if: success()  # Only commit if script ran successfully
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add hr_contacts.csv
+          git commit -m "Mark contact as sent [skip ci]" || echo "No changes to commit"
+          git push
